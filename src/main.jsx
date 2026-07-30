@@ -3,14 +3,17 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { PortfolioProvider } from './context/PortfolioContext.jsx'
+import { AuthProvider } from './context/AuthContext.jsx'
 import './styles/index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <PortfolioProvider>
-        <App />
-      </PortfolioProvider>
+      <AuthProvider>
+        <PortfolioProvider>
+          <App />
+        </PortfolioProvider>
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
 )
