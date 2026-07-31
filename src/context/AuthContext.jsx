@@ -8,23 +8,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let isMounted = true
-
+    let mounted = true
     supabase.auth.getSession().then(({ data }) => {
-      if (!isMounted) return
-      setSession(data.session)
-      setLoading(false)
+      if (mounted) { setSession(data.session); setLoading(false) }
     })
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-      setLoading(false)
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s); setLoading(false)
     })
-
-    return () => {
-      isMounted = false
-      listener?.subscription?.unsubscribe()
-    }
+    return () => { mounted = false; listener?.subscription?.unsubscribe() }
   }, [])
 
   const signIn = async (email, password) => {
@@ -38,20 +29,18 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
-  const value = {
-    session,
-    user: session?.user ?? null,
-    isAuthenticated: !!session,
-    loading,
-    signIn,
-    signOut,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{
+      session, user: session?.user ?? null,
+      isAuthenticated: !!session, loading, signIn, signOut
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
