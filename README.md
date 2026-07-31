@@ -1,6 +1,6 @@
 # Aurora — Serverless CMS Portfolio
 
-A full-stack, single-page developer portfolio built with **React 19 + Vite + Tailwind CSS + Framer Motion**, backed entirely by **Supabase** as a serverless CMS. Every section — hero, about, skills, projects — is fetched from Supabase, and a hidden `/admin` dashboard lets you edit all of it with full CRUD, syncing to the public site live via Supabase Realtime (no page refresh needed).
+A full-stack, single-page developer portfolio built with **React 19 + Vite + Tailwind CSS + Framer Motion**, backed entirely by **Supabase** as a serverless CMS. Every section — hero, about, skills, projects — is fetched from Supabase, and a login-protected `/admin` dashboard (real Supabase Auth, with a sign-in screen and a log-out button) lets you edit all of it with full CRUD, syncing to the public site live via Supabase Realtime (no page refresh needed).
 
 ---
 
@@ -25,19 +25,22 @@ src/
 │   ├── Navbar.jsx, Footer.jsx, CursorGlow.jsx, Loader.jsx
 ├── pages/
 │   ├── Home.jsx               # public portfolio (/)
-│   ├── Admin.jsx               # hidden CMS dashboard (/admin)
+│   ├── Login.jsx               # admin sign-in (/admin/login)
+│   ├── Admin.jsx               # protected CMS dashboard (/admin)
 │   └── NotFound.jsx
 ├── layouts/
 │   ├── MainLayout.jsx
-│   └── AdminLayout.jsx
+│   └── AdminLayout.jsx          # includes the Log out button
 ├── hooks/
 │   └── useRealtimeTable.js     # subscribes to Supabase postgres_changes
 ├── services/
 │   └── api.js                   # all CRUD functions (hero/about/skills/projects)
 ├── context/
-│   └── PortfolioContext.jsx     # fetches + live-syncs all portfolio data
+│   ├── PortfolioContext.jsx     # fetches + live-syncs all portfolio data
+│   └── AuthContext.jsx          # Supabase Auth session, signIn/signOut
 ├── routes/
-│   └── AppRoutes.jsx
+│   ├── AppRoutes.jsx
+│   └── ProtectedRoute.jsx       # redirects to /admin/login when signed out
 ├── supabase/
 │   └── supabaseClient.js        # createClient() using env vars
 ├── styles/
@@ -95,18 +98,21 @@ Visit `http://localhost:5173` for the portfolio and `http://localhost:5173/admin
 
 1. Go to [supabase.com](https://supabase.com) → **New project**. Choose a name, database password, and region, then wait for provisioning (~2 min).
 2. In the left sidebar, open **SQL Editor** → **New query**.
-3. Paste the entire contents of [`supabase/schema.sql`](./supabase/schema.sql) and click **Run**. This creates the `hero`, `about`, `skills`, `projects` tables, enables Row Level Security with public read/write policies (suitable for this assignment's no-auth admin demo), turns on Realtime for all four tables, and inserts sample seed data.
-4. Go to **Project Settings → API**. Copy the **Project URL** and the **anon public** key.
-5. Paste them into your local `.env` file as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-6. Restart `npm run dev` so Vite picks up the new env vars.
-7. Open `/admin` in the browser — you should see the seeded hero/about/skills/projects data ready to edit. Any save immediately reflects on `/` because of the Realtime subscription in `PortfolioContext.jsx`.
+3. Paste the entire contents of [`supabase/schema.sql`](./supabase/schema.sql) and click **Run**. This creates the `hero`, `about`, `skills`, `projects` tables, enables Row Level Security (public **read**, but writes require a signed-in user), turns on Realtime for all four tables, and inserts sample seed data.
+4. Create your admin login: **Authentication → Users → Add user**. Set an email + password and check **Auto Confirm User**. This is the account you'll use to sign in at `/admin/login`.
+5. Go to **Project Settings → API**. Copy the **Project URL** and the **anon public** key.
+6. Paste them into your local `.env` file as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+7. Restart `npm run dev` so Vite picks up the new env vars.
+8. Open `/admin` in the browser — you'll be redirected to `/admin/login`. Sign in with the user you created in step 4, and you'll land on the dashboard with the seeded hero/about/skills/projects data ready to edit. Any save immediately reflects on `/` because of the Realtime subscription in `PortfolioContext.jsx`.
 
 ### About the `/admin` route and security
 
-This assignment calls for a **hidden** admin route rather than an authenticated one, so `/admin` has no login gate and the Supabase RLS policies allow public writes with the anon key. That's intentional for the assignment's scope, but **do not use this configuration for a real production site** with sensitive data. To harden it:
-- Add Supabase Auth (email/password or magic link) and wrap `/admin` in a route guard.
-- Change the RLS `insert`/`update`/`delete` policies from `using (true)` to `using (auth.role() = 'authenticated')`.
-- Optionally rename the route to something non-obvious and add it to `robots.txt` disallow rules.
+`/admin` is a real, authenticated route, not just a hidden one:
+- `context/AuthContext.jsx` wraps Supabase Auth and exposes `session`, `signIn`, and `signOut`.
+- `routes/ProtectedRoute.jsx` guards `/admin` — visiting it while signed out redirects to `/admin/login` (and back again after a successful sign-in).
+- `pages/Login.jsx` is the sign-in screen; `layouts/AdminLayout.jsx` has a **Log out** button that ends the Supabase session and returns to `/admin/login`.
+- The RLS policies in `schema.sql` only allow `insert`/`update`/`delete` `to authenticated` — so even someone with your anon key can't write to the database without logging in.
+- There's no public sign-up screen; admin users are created manually in the Supabase dashboard (step 4 above), so only people you've explicitly added can ever log in.
 
 ---
 
@@ -173,7 +179,7 @@ Confirm `.env` is **not** in the pushed files (check the repo on GitHub) — it 
 
 - **Dynamic content from Supabase**: `services/api.js` + `context/PortfolioContext.jsx` — no hardcoded hero/about/skills/projects text.
 - **Full CRUD admin**: `pages/Admin.jsx` + `components/admin/*` cover create/update/delete for skills and projects, and update for hero/about.
+- **Authenticated admin (login/logout)**: `context/AuthContext.jsx`, `pages/Login.jsx`, and `routes/ProtectedRoute.jsx` gate `/admin` behind Supabase Auth; `layouts/AdminLayout.jsx` provides the Log out control. RLS policies in `schema.sql` reject writes from anyone not signed in.
 - **Live sync without refresh**: `hooks/useRealtimeTable.js` subscribes to Postgres changes on all four tables and refetches automatically.
 - **React Router**: `/` (public) and `/admin` (dashboard), defined in `routes/AppRoutes.jsx`.
 - **Premium UI**: glassmorphism, bento layout, aurora gradients, cursor glow, Framer Motion throughout — see `styles/index.css` and component files.
-"# safa--nasir-portfolio" 
