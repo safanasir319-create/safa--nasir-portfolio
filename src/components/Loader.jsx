@@ -1,17 +1,16 @@
 import { motion } from 'framer-motion'
 
-export default function Loader({ label = 'Loading portfolio' }) {
+export default function Loader({ label = 'Loading' }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <div className="flex gap-2">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="h-2.5 w-2.5 rounded-full bg-aurora-teal"
-            animate={{ y: [0, -10, 0], opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 1, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
-          />
-        ))}
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5">
+      <div className="relative flex h-12 w-12 items-center justify-center">
+        <div className="absolute inset-0 rounded-full border-2 border-aurora-violet/20" />
+        <motion.div
+          className="absolute inset-0 rounded-full border-2 border-transparent border-t-aurora-violet"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
+        <div className="h-2 w-2 rounded-full bg-aurora-teal shadow-[0_0_10px_rgba(69,232,196,0.8)]" />
       </div>
       <p className="font-mono text-xs uppercase tracking-widest text-ink-faint">{label}…</p>
     </div>
